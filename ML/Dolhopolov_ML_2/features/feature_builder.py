@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Callable
 
 import pandas as pd
 
@@ -111,6 +110,10 @@ class FeatureBuilder(ABC):
 
         return self
 
+    def _drop_irrelevant(self, columns: list[str]) -> 'FeatureBuilder':
+        self.df.drop(columns=columns, inplace=True, errors='ignore')
+        return self
+
     def _check_columns_in_df(self, *columns: str | tuple[str]) -> bool:
         """Check if columns is in the dataframe.
 
@@ -125,7 +128,3 @@ class FeatureBuilder(ABC):
         else:
             raise KeyError(
                 f'Columns {', '.join(columns)} not found in dataframe. \n The available columns are: {', '.join(self.df.columns)}')
-
-    def _drop_irrelevant(self, columns: list[str]) -> 'FeatureBuilder':
-        self.df.drop(columns=columns, inplace=True, errors='ignore')
-        return self
