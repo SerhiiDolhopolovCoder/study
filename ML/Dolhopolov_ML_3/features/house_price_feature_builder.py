@@ -1,5 +1,4 @@
 import numpy as np
-
 import pandas as pd
 from pandas.api.types import is_numeric_dtype
 
@@ -50,6 +49,15 @@ class HousePriceFeatureBuilder(FeatureBuilder):
         self.df['BsmtQual'] = self.df['BsmtQual'].fillna('NoBasement')
         self.df['BsmtCond'] = self.df['BsmtCond'].fillna('NoBasement')
         
+        
+        # Цих даних з Null немає в трейні, але є в тестовому, заповнив 0 по контексту
+        self.df['BsmtFullBath'] = self.df['BsmtFullBath'].fillna(0)
+        self.df['BsmtHalfBath'] = self.df['BsmtHalfBath'].fillna(0)
+        self.df['BsmtUnfSF'] = self.df['BsmtUnfSF'].fillna(0)
+        self.df['BsmtFinSF1'] = self.df['BsmtFinSF1'].fillna(0)
+        self.df['BsmtFinSF2'] = self.df['BsmtFinSF2'].fillna(0)
+        self.df['GarageArea'] = self.df['GarageArea'].fillna(0)
+        
         # 0, бо немає обліцовки
         self.df['MasVnrArea'] = self.df['MasVnrArea'].fillna(0)
         
@@ -70,12 +78,64 @@ class HousePriceFeatureBuilder(FeatureBuilder):
         return self
 
     def encode(self) -> 'HousePriceFeatureBuilder':
-        columns = ['Alley', 'MSSubClass', 'MSZoning', 'Street', 'LotShape', 
-                   'LandContour', 'Utilities', 'LotConfig',
-                   'LandSlope', 'Neighborhood', 'Condition1', 'Condition2', 'BldgType', 'HouseStyle',
-                   'RoofStyle', 'RoofMatl', 'Exterior1st', 'Exterior2nd', 'MasVnrType', 'Foundation',
-                   'Heating', 'CentralAir', 'Electrical', 'Functional', 'GarageType', 
-                   'PavedDrive', 'SaleType', 'SaleCondition']
+        # Через те що дані в train та test не співпадають, наприклад:
+        # В train для фічі може бути Good та Bad
+        # А в test Bad, Average
+        # Використаю ручне заповнення категорій через маппінг
+        
+        condition_list = ['Artery', 'Feedr', 'Norm', 'PosA', 'PosN', 'RRAe',
+                           'RRNn', 'RRAn', 'RRNe']
+        exterior_list = ['Other', 'AsbShng', 'AsphShn', 'BrkComm', 'BrkFace', 'CBlock',
+                        'CemntBd', 'HdBoard', 'ImStucc', 'MetalSd', 'Plywood',
+                        'PreCast', 'Stone', 'Stucco', 'VinylSd', 'Wd Sdng',
+                        'WdShing']
+        columns = {
+            'Alley': ['NoAlley', 'Grvl', 'Pave'],
+            'MSSubClass': ['20', '30', '40', '45', '50', '60', '70', '75', 
+                           '80', '85', '90', '120', '150', '160', '180', '190'],
+            'MSZoning': ['A', 'C', 'FV', 'I', 'RH', 'RL', 'RP', 'RM'],
+            'Street': ['Grvl', 'Pave'],
+            'LotShape': ['Reg', 'IR1', 'IR2', 'IR3'],
+            'LandContour': ['Lvl', 'Bnk', 'HLS', 'Low'],
+            'Utilities': ['AllPub', 'NoSewr', 'NoSeWa', 'ELO'],
+            'LotConfig': ['Inside', 'Corner', 'CulDSac', 'FR2', 'FR3'],
+            'LandSlope': ['Gtl', 'Mod', 'Sev'],
+            'Neighborhood': ['Blmngtn', 'Blueste', 'BrDale', 'BrkSide', 'ClearCr', 
+                             'CollgCr', 'Crawfor', 'Edwards', 'Gilbert', 'IDOTRR',
+                             'MeadowV', 'Mitchel', 'NAmes', 'NoRidge', 'NPkVill',
+                             'NridgHt', 'NWAmes', 'OldTown', 'SWISU', 'Sawyer', 
+                             'SawyerW', 'Somerst', 'StoneBr', 'Timber', 'Veenker'],
+            'Condition1': condition_list,
+            'Condition2': condition_list,
+            'BldgType': ['1Fam', '2fmCon', 'Duplex', 'TwnhsE', 'TwnhsI'],
+            'HouseStyle': ['1.5Unf', '1Story', '2.5Unf', '2Story', 'SFoyer',
+                           'SFLiv', '2.5Fin', '1.5Fin', 'SLvl'],
+            'RoofStyle': ['Flat', 'Gable', 'Gambrel', 'Hip', 'Mansard', 'Shed'],
+            'RoofMatl': ['ClyTile', 'CompShg', 'Membran', 'Metal', 'Roll', 
+                         'Tar&Grv', 'WdShake', 'WdShngl'],
+            'Exterior1st': exterior_list,
+            'Exterior2nd': exterior_list,
+            'MasVnrType': ['NoMasonry', 'BrkCmn', 'BrkFace', 'CBlock', 'Stone'],
+            'Foundation': ['BrkTil', 'CBlock', 'PConc', 'Slab', 'Stone', 'Wood'],
+            'Heating': ['Floor', 'GasA', 'GasW', 'Grav', 'OthW', 'Wall'],
+            'CentralAir': ['N', 'Y'],
+            'Electrical': ['Mix', 'FuseA', 'FuseF', 'FuseP', 'SBrkr'],
+            'Functional': ['Typ', 'Maj1', 'Maj2', 'Min1', 'Min2', 'Mod', 'Sev', 'Sal'],
+            'GarageType': ['NoGarage', 'Attchd', 'Basment', 'BuiltIn', 'CarPort',
+                           'Detchd', '2Types'],
+            'PavedDrive': ['N', 'P', 'Y'],
+            'SaleType': ['Oth', 'Con', 'ConLD', 'ConLI', 'ConLw', 'New', 'WD',
+                         'CWD', 'VWD', 'COD'],
+            'SaleCondition': ['Abnorml', 'AdjLand', 'Alloca', 'Family', 'Normal',
+                              'Partial']
+        }
+        
+        # columns = ['Alley', 'MSSubClass', 'MSZoning', 'Street', 'LotShape', 
+        #            'LandContour', 'Utilities', 'LotConfig',
+        #            'LandSlope', 'Neighborhood', 'Condition1', 'Condition2', 'BldgType', 'HouseStyle',
+        #            'RoofStyle', 'RoofMatl', 'Exterior1st', 'Exterior2nd', 'MasVnrType', 'Foundation',
+        #            'Heating', 'CentralAir', 'Electrical', 'Functional', 'GarageType', 
+        #            'PavedDrive', 'SaleType', 'SaleCondition']
         
         for column in columns:
             self._hot_encode(column, drop_first=True)
@@ -96,11 +156,11 @@ class HousePriceFeatureBuilder(FeatureBuilder):
     
     def get_map_mark(self) -> dict[str, int]:
         return {
-            'NoBasement': -1e3,
-            'NoFireplace': -1e3,
-            'NoPool': -1e3,
-            'NoGarage': -1e3,
-            'No': -1e2,
+            'NoBasement': -2,
+            'NoFireplace': -2,
+            'NoPool': -2,
+            'NoGarage': -2,
+            'No': -1,
             'Po': 0,
             'Fa': 1,
             'TA': 2,
@@ -110,8 +170,8 @@ class HousePriceFeatureBuilder(FeatureBuilder):
         
     def get_map_mark_range(self) -> dict[str, int]:
         return {
-            'NoBasement': -1e3,
-            'No': -1e2,
+            'NoBasement': -2,
+            'No': -1,
             'Mn': 0,
             'Av': 1,
             'Gd': 2,
@@ -119,8 +179,8 @@ class HousePriceFeatureBuilder(FeatureBuilder):
         
     def get_map_rating(self) -> dict[str, int]:
         return {
-            'NoBasement': -1e3,
-            'Unf': -1e2,
+            'NoBasement': -2,
+            'Unf': -1,
             'LwQ': 0,
             'Rec': 1,
             'BLQ': 2,
@@ -130,7 +190,7 @@ class HousePriceFeatureBuilder(FeatureBuilder):
         
     def get_map_finished(self) -> dict[str, int]:
         return {
-            'NoGarage': -1e3,
+            'NoGarage': -2,
             'Unf': 0,
             'RFn': 1,
             'Fin': 2,
@@ -138,7 +198,7 @@ class HousePriceFeatureBuilder(FeatureBuilder):
         
     def get_map_fence_quality(self) -> dict[str, int]:
         return {
-            'NoFence': -1e3,
+            'NoFence': -2,
             'MnWw': 0,
             'GdWo': 1,
             'MnPrv': 2,

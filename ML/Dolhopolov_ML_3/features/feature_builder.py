@@ -1,8 +1,6 @@
 from abc import ABC, abstractmethod
 
-
 import pandas as pd
-
 from sklearn.preprocessing import MinMaxScaler
 
 
@@ -26,7 +24,7 @@ class FeatureBuilder(ABC):
         """
         pass
         
-    def _hot_encode(self, column: str, dtype: str = 'int8', drop_first: bool = False) -> 'FeatureBuilder':
+    def _hot_encode(self, column: str, categories: list[str], dtype: str = 'int8', drop_first: bool = False) -> 'FeatureBuilder':
         """Encode column by hot-encoding:
 
         Args:
@@ -40,7 +38,7 @@ class FeatureBuilder(ABC):
         """
 
         self.df = pd.get_dummies(
-            self.df, columns=[column], prefix=column, dtype=dtype, drop_first=drop_first)
+            self.df, columns=[column], categories=categories, prefix=column, dtype=dtype, drop_first=drop_first)
         return self
     
     def _label_encode(self, column: str, encode_map: dict[str, int]) -> 'FeatureBuilder':
@@ -51,7 +49,9 @@ class FeatureBuilder(ABC):
             column (str): a column for label-encoding
             encode_map (dict[str, int]): map for encoding with type - mark
         """
-        self.df[f'{column}_encoded'] = self.df[column].map(encode_map)
+        new_column = f'{column}_encoded'
+        self.df[new_column] = self.df[column].map(encode_map)
+        self.df.fillna({new_column: -1}, inplace=True)
         self.df.drop(columns=[column], inplace=True)
         return self
     
@@ -64,7 +64,7 @@ class FeatureBuilder(ABC):
         ## Номралізує тільки там де значення >= 0, від'ємні значення не нормалізую, щоб вони не рахувались як
         ## нормальне значення, але від'ємне
         positive_mask = self.df[column] >= 0
-        self.df[column] = self.df[column].astype(float)  # Ensure the column is float
+        self.df[column] = self.df[column].astype(float) 
         self.df.loc[positive_mask, column] = MinMaxScaler().fit_transform(self.df.loc[positive_mask, [column]]) 
         return self
     
