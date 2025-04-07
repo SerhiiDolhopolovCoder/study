@@ -36,9 +36,9 @@ class FeatureBuilder(ABC):
             hot_encode('Embarked' (Values=[A, B, C])) -> pd.DataFrame where ('Embarked' -> ('Embarked_A','Embarked_B', 'Embarked_C'))
             hot_encode('Embarked' (Values=[A, B, C]), drop_first=True) -> pd.DataFrame where ('Embarked' -> ('Embarked_B', 'Embarked_C'))
         """
-
+        self.df[column] = pd.Categorical(self.df[column], categories=categories)
         self.df = pd.get_dummies(
-            self.df, columns=[column], categories=categories, prefix=column, dtype=dtype, drop_first=drop_first)
+            self.df, columns=[column], prefix=column, dtype=dtype, drop_first=drop_first)
         return self
     
     def _label_encode(self, column: str, encode_map: dict[str, int]) -> 'FeatureBuilder':
@@ -51,12 +51,12 @@ class FeatureBuilder(ABC):
         """
         new_column = f'{column}_encoded'
         self.df[new_column] = self.df[column].map(encode_map)
-        self.df.fillna({new_column: -1}, inplace=True)
+        self.df.fillna({new_column: self._no_info}, inplace=True)
         self.df.drop(columns=[column], inplace=True)
         return self
     
     def _normalize_from_0_to_1(self, column: str) -> 'FeatureBuilder':
-        """Normalize column from 0 to 1.
+        """Normalize positive value of a column from 0 to 1.
 
         Args:
             column (str): a column for normalization
@@ -80,3 +80,13 @@ class FeatureBuilder(ABC):
         corr_filter = corr[(abs(corr) >= theresold) & (abs(corr) != 1)]
         corr_df = corr_filter.dropna(how='all').dropna(axis=1, how='all')
         return corr_df.abs().sum().sort_values(ascending=False)
+    
+    @property
+    def _no_info(self) -> float:
+        return -1
+    
+    @property
+    def _no_item(self) -> float:
+        return -2
+    
+    
