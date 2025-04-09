@@ -222,6 +222,22 @@ class HousePriceFeatureBuilder(FeatureBuilder):
                              ], inplace=True, errors='ignore')
         return self
 
+    def drop_vif_correlation_features(self) -> 'HousePriceFeatureBuilder':
+        self.df.drop(columns=['BsmtUnfSF', '2ndFlrSF', 'Exterior2nd_CBlock', 'LowQualFinSF',
+                               'Exterior1st_VinylSd', 'Electrical_SBrkr', 'RoofStyle_Gable',
+                               'GarageType_Attchd', 'HasPool', 'SaleType_New', 'RoofMatl_CompShg',
+                               'MSZoning_RL', 'Exterior1st_MetalSd', 'HouseStyle_2Story',
+                               'Heating_Gas', 'Heating_GasA', 'SaleType_WD', 'GarageCond_encoded',
+                               'Exterior2nd_VinylSd', 'Neighborhood_NAmes', 'GrLivArea',
+                               'YearBuilt', '1stFlrSF', 'Exterior1st_HdBoard', 'Condition2_Norm',
+                               'GarageCars', 'Foundation_PConc', 'BsmtQual_encoded',
+                               'Exterior2nd_Wd Sdng', 'FireplaceQu_encoded', 'Neighborhood_Somerst',
+                               'Exterior2nd_AsphShn'], inplace=True, errors='ignore')
+        
+        # За пірсоном
+        self.df.drop(columns=['Exterior2nd_AsbShng', 'BsmtFinSF2', 'Exterior2nd_Stucco', 'Exterior2nd_Plywood'
+                              'KitchenAbvGr'], inplace=True, errors='ignore')
+        return self
 
 
 

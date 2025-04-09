@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 
 import pandas as pd
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 
 class FeatureBuilder(ABC):
@@ -70,7 +71,7 @@ class FeatureBuilder(ABC):
     
     #отримую список де тільки об'єкти з високою кореляцією та сумарно отсортировані, спочатку дропаю з дуже великою
     #сумою, потім по-черзі з меншою
-    def get_high_corelation_features(self, theresold: float = 0.75) -> pd.Series:
+    def get_high_correlation_features(self, theresold: float = 0.75) -> pd.Series:
         """Return sum of high corelation (>= theresold) features only where correlation > 0 in descending order.
     
         Returns:
@@ -80,6 +81,16 @@ class FeatureBuilder(ABC):
         corr_filter = corr[(abs(corr) >= theresold) & (abs(corr) != 1)]
         corr_df = corr_filter.dropna(how='all').dropna(axis=1, how='all')
         return corr_df.abs().sum().sort_values(ascending=False)
+    
+    def get_VIF_correlation_features(self) -> pd.Series:
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(self.df)
+        vif_data = pd.DataFrame()
+        vif_data["feature"] = self.df.columns
+        vif_data["VIF"] = [variance_inflation_factor(X_scaled, i) for i in range(X_scaled.shape[1])]
+
+        vif_data = vif_data.sort_values(by="VIF", ascending=False)
+        return vif_data
     
     @property
     def _no_info(self) -> float:
