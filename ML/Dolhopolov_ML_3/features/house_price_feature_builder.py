@@ -1,13 +1,18 @@
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_numeric_dtype
+from sklearn.preprocessing import MinMaxScaler
 
 from . import FeatureBuilder
+from .split_data_type import SplitDataType
 
 
 class HousePriceFeatureBuilder(FeatureBuilder):
-    def __init__(self, df: pd.DataFrame):
-        super().__init__(df, 'SalePrice')
+    def __init__(self, 
+                 df: pd.DataFrame, 
+                 split_data_type: SplitDataType, 
+                 normalization_scaler: MinMaxScaler):
+        super().__init__(df, split_data_type, normalization_scaler, target_column='SalePrice')
 
     def build_by_templete(self, new_df: pd.DataFrame = None) -> pd.DataFrame:
         if new_df:
@@ -202,11 +207,7 @@ class HousePriceFeatureBuilder(FeatureBuilder):
     # мінусових значень нема(тільки label enc, але там є більше 1)
     # Пробував нормалізовувати тільки чисельні значення, без label encoding (> 100), але не допомогло
     def normalize(self) -> 'HousePriceFeatureBuilder':
-        for column in self.df.columns:
-            if is_numeric_dtype(self.df[column]):
-                max_value = self.df[column].max()
-                if max_value > 100:
-                    self._normalize_from_0_to_1(column)
+        self._normalize_from_0_to_1()
         return self
     
     def drop_high_correlation_features(self) -> 'HousePriceFeatureBuilder':

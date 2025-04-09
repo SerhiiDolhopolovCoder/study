@@ -4,17 +4,30 @@ import pandas as pd
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
+from .split_data_type import SplitDataType
+
 
 class FeatureBuilder(ABC):
-    def __init__(self, df: pd.DataFrame, target_column: str):
+    def __init__(self, 
+                 df: pd.DataFrame, 
+                 split_data_type: SplitDataType, 
+                 normalization_scaler: MinMaxScaler, 
+                 target_column: str
+                 ):
         self.df = df
+        self.split_data_type = split_data_type
+        self.normalization_scaler = normalization_scaler
         if target_column in self.df.columns:
             self.__target = self.df[target_column]
         self.df.drop(columns=[target_column], inplace=True, errors='ignore')
+        
+    def get_type(self) -> str:
+        return self.split_data_type.value
     
     @property
     def target(self) -> pd.Series:
         return self.__target
+       
             
     @abstractmethod
     def build_by_templete(self, new_df=None) -> pd.DataFrame:
@@ -56,17 +69,21 @@ class FeatureBuilder(ABC):
         self.df.drop(columns=[column], inplace=True)
         return self
     
-    def _normalize_from_0_to_1(self, column: str) -> 'FeatureBuilder':
+    def _normalize_from_0_to_1(self) -> 'FeatureBuilder':
         """Normalize positive value of a column from 0 to 1.
 
         Args:
             column (str): a column for normalization
         """
-        ## Номралізує тільки там де значення >= 0, від'ємні значення не нормалізую, щоб вони не рахувались як
-        ## нормальне значення, але від'ємне
-        positive_mask = self.df[column] >= 0
-        self.df[column] = self.df[column].astype(float) 
-        self.df.loc[positive_mask, column] = MinMaxScaler().fit_transform(self.df.loc[positive_mask, [column]]) 
+        ## Номралізує тільки там де значення >= 0, від'ємні значення не нормалізує
+        
+        scaler_action = (self.normalization_scaler.fit_transform 
+                        if 
+                        self.split_data_type == SplitDataType.TRAIN 
+                        else 
+                        self.normalization_scaler.transform)
+        positive_mask = self.df > 0
+        self.df[positive_mask] = scaler_action(self.df[positive_mask])
         return self
     
     #отримую список де тільки об'єкти з високою кореляцією та сумарно отсортировані, спочатку дропаю з дуже великою
@@ -94,10 +111,10 @@ class FeatureBuilder(ABC):
     
     @property
     def _no_info(self) -> float:
-        return -1
+        return -1000
     
     @property
     def _no_item(self) -> float:
-        return -2
+        return -2000
     
     
