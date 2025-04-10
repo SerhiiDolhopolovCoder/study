@@ -22,4 +22,5 @@ address = Table(
     Column('email', String(60), nullable=False),
 )
 
-print(user_table.columns.keys())
+metadata.create_all(engine)
+metadata.drop_all(engine)
