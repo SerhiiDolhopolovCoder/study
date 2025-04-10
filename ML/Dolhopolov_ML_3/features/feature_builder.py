@@ -4,7 +4,7 @@ import pandas as pd
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
-from .split_data_type import SplitDataType
+from features.split_data_type import SplitDataType
 
 
 class FeatureBuilder(ABC):
@@ -55,39 +55,18 @@ class FeatureBuilder(ABC):
             self.df, columns=[column], prefix=column, dtype=dtype, drop_first=drop_first)
         return self
     
-    def _label_encode(self, column: str, encode_map: dict[str, int]) -> 'FeatureBuilder':
-        """Encode column by label-encoding.
-        !!! If value in not in encode_map, it will be replaced Null.
-
-        Args:
-            column (str): a column for label-encoding
-            encode_map (dict[str, int]): map for encoding with type - mark
-        """
-        new_column = f'{column}_encoded'
-        self.df[new_column] = self.df[column].map(encode_map)
-        self.df.fillna({new_column: self._no_info}, inplace=True)
-        self.df.drop(columns=[column], inplace=True)
-        return self
-    
     def _normalize_from_0_to_1(self) -> 'FeatureBuilder':
-        """Normalize positive value of a column from 0 to 1.
+        columns_to_scale = [col for col in self.df.columns if self.df[col].max() > 1]
 
-        Args:
-            column (str): a column for normalization
-        """
-        ## Номралізує тільки там де значення >= 0, від'ємні значення не нормалізує
-        
-        scaler_action = (self.normalization_scaler.fit_transform 
-                        if 
-                        self.split_data_type == SplitDataType.TRAIN 
-                        else 
-                        self.normalization_scaler.transform)
-        positive_mask = self.df > 0
-        self.df[positive_mask] = scaler_action(self.df[positive_mask])
+        if self.split_data_type == SplitDataType.TRAIN:
+            self.df[columns_to_scale] = self.normalization_scaler.fit_transform(self.df[columns_to_scale])
+        else:
+            self.df[columns_to_scale] = self.normalization_scaler.transform(self.df[columns_to_scale])
+
         return self
     
     #отримую список де тільки об'єкти з високою кореляцією та сумарно отсортировані, спочатку дропаю з дуже великою
-    #сумою, потім по-черзі з меншою
+    #сумою
     def get_high_correlation_features(self, theresold: float = 0.75) -> pd.Series:
         """Return sum of high corelation (>= theresold) features only where correlation > 0 in descending order.
     
@@ -98,7 +77,7 @@ class FeatureBuilder(ABC):
         corr_filter = corr[(abs(corr) >= theresold) & (abs(corr) != 1)]
         corr_df = corr_filter.dropna(how='all').dropna(axis=1, how='all')
         return corr_df.abs().sum().sort_values(ascending=False)
-    
+
     def get_VIF_correlation_features(self) -> pd.Series:
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(self.df)
@@ -108,13 +87,3 @@ class FeatureBuilder(ABC):
 
         vif_data = vif_data.sort_values(by="VIF", ascending=False)
         return vif_data
-    
-    @property
-    def _no_info(self) -> float:
-        return -1000
-    
-    @property
-    def _no_item(self) -> float:
-        return -2000
-    
-    

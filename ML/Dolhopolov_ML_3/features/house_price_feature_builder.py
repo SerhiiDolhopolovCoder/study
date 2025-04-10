@@ -1,10 +1,12 @@
+import json
+
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_numeric_dtype
 from sklearn.preprocessing import MinMaxScaler
 
-from . import FeatureBuilder
-from .split_data_type import SplitDataType
+from features import FeatureBuilder
+from features.split_data_type import SplitDataType
 
 
 class HousePriceFeatureBuilder(FeatureBuilder):
@@ -35,26 +37,14 @@ class HousePriceFeatureBuilder(FeatureBuilder):
 
     def fill_null_columns(self) -> 'HousePriceFeatureBuilder':
         self.df['Alley'] = self.df['Alley'].fillna('NoAlley')
-        self.df['Fence'] = self.df['Fence'].fillna('NoFence')
         self.df['MasVnrType'] = self.df['MasVnrType'].fillna('NoMasonry')
-        self.df['FireplaceQu'] = self.df['FireplaceQu'].fillna('NoFireplace')
-        self.df['GarageQual'] = self.df['GarageQual'].fillna('NoGarage')
-        self.df['GarageFinish'] = self.df['GarageFinish'].fillna('NoGarage')
         self.df['GarageType'] = self.df['GarageType'].fillna('NoGarage')
-        self.df['GarageCond'] = self.df['GarageCond'].fillna('NoGarage')
         
         # заповню медіаною, щоб не впливало на підрахунки
         median_garageyrblt = self.df['GarageYrBlt'].median()
         self.df['GarageYrBlt'] = self.df['GarageYrBlt'].fillna(median_garageyrblt)
 
-        
-        self.df['BsmtExposure'] = self.df['BsmtExposure'].fillna('NoBasement')
-        self.df['BsmtFinType1'] = self.df['BsmtFinType1'].fillna('NoBasement')
-        self.df['BsmtFinType2'] = self.df['BsmtFinType2'].fillna('NoBasement')
-        self.df['BsmtQual'] = self.df['BsmtQual'].fillna('NoBasement')
-        self.df['BsmtCond'] = self.df['BsmtCond'].fillna('NoBasement')
-        
-        
+          
         # Цих даних з Null немає в трейні, але є в тестовому, заповнив 0 по контексту
         self.df['BsmtFullBath'] = self.df['BsmtFullBath'].fillna(0)
         self.df['BsmtHalfBath'] = self.df['BsmtHalfBath'].fillna(0)
@@ -89,121 +79,30 @@ class HousePriceFeatureBuilder(FeatureBuilder):
         # А в test Bad, Average
         # Використаю ручне заповнення категорій через маппінг
         
-        condition_list = ['Artery', 'Feedr', 'Norm', 'PosA', 'PosN', 'RRAe',
-                           'RRNn', 'RRAn', 'RRNe']
-        exterior_list = ['Other', 'AsbShng', 'AsphShn', 'BrkComm', 'BrkFace', 'CBlock',
-                        'CemntBd', 'HdBoard', 'ImStucc', 'MetalSd', 'Plywood',
-                        'PreCast', 'Stone', 'Stucco', 'VinylSd', 'Wd Sdng',
-                        'WdShing']
-        columns = {
-            'Alley': ['NoAlley', 'Grvl', 'Pave'],
-            'MSSubClass': ['20', '30', '40', '45', '50', '60', '70', '75', 
-                           '80', '85', '90', '120', '150', '160', '180', '190'],
-            'MSZoning': ['A', 'C', 'FV', 'I', 'RH', 'RL', 'RP', 'RM'],
-            'Street': ['Grvl', 'Pave'],
-            'LotShape': ['Reg', 'IR1', 'IR2', 'IR3'],
-            'LandContour': ['Lvl', 'Bnk', 'HLS', 'Low'],
-            'Utilities': ['AllPub', 'NoSewr', 'NoSeWa', 'ELO'],
-            'LotConfig': ['Inside', 'Corner', 'CulDSac', 'FR2', 'FR3'],
-            'LandSlope': ['Gtl', 'Mod', 'Sev'],
-            'Neighborhood': ['Blmngtn', 'Blueste', 'BrDale', 'BrkSide', 'ClearCr', 
-                             'CollgCr', 'Crawfor', 'Edwards', 'Gilbert', 'IDOTRR',
-                             'MeadowV', 'Mitchel', 'NAmes', 'NoRidge', 'NPkVill',
-                             'NridgHt', 'NWAmes', 'OldTown', 'SWISU', 'Sawyer', 
-                             'SawyerW', 'Somerst', 'StoneBr', 'Timber', 'Veenker'],
-            'Condition1': condition_list,
-            'Condition2': condition_list,
-            'BldgType': ['1Fam', '2fmCon', 'Duplex', 'TwnhsE', 'TwnhsI'],
-            'HouseStyle': ['1.5Unf', '1Story', '2.5Unf', '2Story', 'SFoyer',
-                           'SFLiv', '2.5Fin', '1.5Fin', 'SLvl'],
-            'RoofStyle': ['Flat', 'Gable', 'Gambrel', 'Hip', 'Mansard', 'Shed'],
-            'RoofMatl': ['ClyTile', 'CompShg', 'Membran', 'Metal', 'Roll', 
-                         'Tar&Grv', 'WdShake', 'WdShngl'],
-            'Exterior1st': exterior_list,
-            'Exterior2nd': exterior_list,
-            'MasVnrType': ['NoMasonry', 'BrkCmn', 'BrkFace', 'CBlock', 'Stone'],
-            'Foundation': ['BrkTil', 'CBlock', 'PConc', 'Slab', 'Stone', 'Wood'],
-            'Heating': ['Floor', 'GasA', 'GasW', 'Grav', 'OthW', 'Wall'],
-            'CentralAir': ['N', 'Y'],
-            'Electrical': ['Mix', 'FuseA', 'FuseF', 'FuseP', 'SBrkr'],
-            'Functional': ['Typ', 'Maj1', 'Maj2', 'Min1', 'Min2', 'Mod', 'Sev', 'Sal'],
-            'GarageType': ['NoGarage', 'Attchd', 'Basment', 'BuiltIn', 'CarPort',
-                           'Detchd', '2Types'],
-            'PavedDrive': ['N', 'P', 'Y'],
-            'SaleType': ['Oth', 'Con', 'ConLD', 'ConLI', 'ConLw', 'New', 'WD',
-                         'CWD', 'VWD', 'COD'],
-            'SaleCondition': ['Abnorml', 'AdjLand', 'Alloca', 'Family', 'Normal',
-                              'Partial']
-        }
-        
+        with open('value_dictionary.json', 'r', encoding='utf-8') as file:
+            columns = json.load(file)
         for column, categories in columns.items():
             self._hot_encode(column, categories=categories, drop_first=True)
             
-            
         for column in ['ExterQual', 'ExterCond', 'BsmtQual', 'BsmtCond', 'HeatingQC', 'KitchenQual',
-                       'FireplaceQu', 'GarageQual', 'GarageCond']:
-            self._label_encode(column, self.get_map_mark())
-        for column in ['BsmtExposure']:
-            self._label_encode(column, self.get_map_mark_range())
-        for column in ['BsmtFinType1', 'BsmtFinType2']:
-            self._label_encode(column, self.get_map_rating())
-        for column in ['GarageFinish']:
-            self._label_encode(column, self.get_map_finished())
-        self._label_encode('Fence', self.get_map_fence_quality())
+                       'FireplaceQu', 'GarageQual', 'GarageCond', 'BsmtExposure', 
+                       'BsmtFinType1', 'BsmtFinType2', 'GarageFinish', 'Fence']:
+            self.df[f'{column}_positive'] = self.df[column].apply(self.is_positive_mark).astype('int8')
+            self.df[f'{column}_negative'] = self.df[column].apply(self.is_negative_mark).astype('int8')
+            self.df[f'{column}_neutral'] = self.df[column].apply(self.is_neutral_mark).astype('int8')
+            self.df.drop(columns=[column], inplace=True, errors='ignore')
         
         return self
     
-    def get_map_mark(self) -> dict[str, int]:
-        return {
-            'NoBasement': self._no_item,
-            'NoFireplace': self._no_item,
-            'NoPool': self._no_item,
-            'NoGarage': self._no_item,
-            'No': self._no_info,
-            'Po': 0,
-            'Fa': 1,
-            'TA': 2,
-            'Gd': 3,
-            'Ex': 4,
-        }
-        
-    def get_map_mark_range(self) -> dict[str, int]:
-        return {
-            'NoBasement': self._no_item,
-            'No': self._no_info,
-            'Mn': 0,
-            'Av': 1,
-            'Gd': 2,
-        }
-        
-    def get_map_rating(self) -> dict[str, int]:
-        return {
-            'NoBasement': self._no_item,
-            'Unf': self._no_info,
-            'LwQ': 0,
-            'Rec': 1,
-            'BLQ': 2,
-            'ALQ': 3,
-            'GLQ': 4,
-        }
-        
-    def get_map_finished(self) -> dict[str, int]:
-        return {
-            'NoGarage': self._no_item,
-            'Unf': 0,
-            'RFn': 1,
-            'Fin': 2,
-        }
-        
-    def get_map_fence_quality(self) -> dict[str, int]:
-        return {
-            'NoFence': self._no_item,
-            'MnWw': 0,
-            'GdWo': 1,
-            'MnPrv': 2,
-            'GdPrv': 3,
-        }
-
+    def is_positive_mark(self, value: str | None) -> bool:
+        return value in ['Ex', 'Gd', 'GLQ', 'Fin', 'GdPrv', 'GdWo']
+    
+    def is_neutral_mark(self, value: str | None) -> bool:
+        return value in ['Ta', 'Av', 'ALQ', 'Rec', 'RFn']
+    
+    def is_negative_mark(self, value: str | None) -> bool:
+        return value in ['Fa', 'Po', 'Mn', 'BLQ', 'LwQ', 'Unf', 'MnPrv', 'MnWw']
+    
     # мінусових значень нема(тільки label enc, але там є більше 1)
     # Пробував нормалізовувати тільки чисельні значення, без label encoding (> 100), але не допомогло
     def normalize(self) -> 'HousePriceFeatureBuilder':
@@ -211,55 +110,55 @@ class HousePriceFeatureBuilder(FeatureBuilder):
         return self
     
     def drop_high_correlation_features(self) -> 'HousePriceFeatureBuilder':
-        self.df.drop(columns=['GarageQual_encoded', 'SaleType_New', 'BsmtCond_encoded',
-                            '2ndFlrSF', 'HasPool', 'Exterior2nd_VinylSd', 'Exterior2nd_MetalSd',
-                            'RoofStyle_Hip', 'FireplaceQu_encoded', 'Exterior2nd_HdBoard',
-                            'GarageCars', 'Neighborhood_Somerst', 'Exterior2nd_Wd Sdng',
-                            'Electrical_SBrkr', 'Exterior2nd_AsbShng', 'TotRmsAbvGrd',
-                            '1stFlrSF', 'GarageFinish_encoded', 'MSZoning_RL',
-                            'Foundation_PConc', 'Exterior2nd_Stucco', 'GarageYrBlt',
-                            'BsmtFinType2_encoded', 'SaleCondition_Partial', 'Exterior2nd_Plywood',
-                            'RoofMatl_Tar&Grv', 'Heating_GasW', 'KitchenAbvGr'
+        # Кореляція Пірсона
+        self.df.drop(columns=['SaleType_New', '2ndFlrSF', 'PoolArea', 'Exterior2nd_VinylSd',
+                               'Exterior2nd_MetalSd', 'RoofStyle_Hip', 'Exterior2nd_HdBoard',
+                               'GarageCars', 'MSZoning_FV', 'Exterior2nd_Wd Sdng',
+                               'Electrical_SBrkr', 'Exterior2nd_AsbShng', 'GrLivArea',
+                               'TotalBsmtSF', 'MSZoning_RM', 'Foundation_CBlock',
+                               'Exterior2nd_Stucco', 'YearBuilt', 'SaleCondition_Partial',
+                               'Exterior2nd_Plywood', 'RoofMatl_Tar&Grv', 'Heating_GasW', 'BldgType_Duplex'
                              ], inplace=True, errors='ignore')
-        return self
-
-    def drop_vif_correlation_features(self) -> 'HousePriceFeatureBuilder':
-        self.df.drop(columns=['BsmtUnfSF', '2ndFlrSF', 'Exterior2nd_CBlock', 'LowQualFinSF',
-                               'Exterior1st_VinylSd', 'Electrical_SBrkr', 'RoofStyle_Gable',
-                               'GarageType_Attchd', 'HasPool', 'SaleType_New', 'RoofMatl_CompShg',
-                               'MSZoning_RL', 'Exterior1st_MetalSd', 'HouseStyle_2Story',
-                               'Heating_Gas', 'Heating_GasA', 'SaleType_WD', 'GarageCond_encoded',
-                               'Exterior2nd_VinylSd', 'Neighborhood_NAmes', 'GrLivArea',
-                               'YearBuilt', '1stFlrSF', 'Exterior1st_HdBoard', 'Condition2_Norm',
-                               'GarageCars', 'Foundation_PConc', 'BsmtQual_encoded',
-                               'Exterior2nd_Wd Sdng', 'FireplaceQu_encoded', 'Neighborhood_Somerst',
-                               'Exterior2nd_AsphShn'], inplace=True, errors='ignore')
         
-        # За пірсоном
-        self.df.drop(columns=['Exterior2nd_AsbShng', 'BsmtFinSF2', 'Exterior2nd_Stucco', 'Exterior2nd_Plywood'
-                              'KitchenAbvGr'], inplace=True, errors='ignore')
+        # Стає гірше, тому позбавився
+        # VIF
+        # self.df.drop(columns=['Exterior1st_Plywood', 'GarageType_Basment', 'Exterior2nd_CBlock',
+        #                        'BsmtFinType1_negative', 'GarageFinish_negative', 'HouseStyle_1Story',
+        #                        'Neighborhood_NAmes', 'BsmtFinType2_negative', 'Condition2_Norm',
+        #                        '1stFlrSF', 'GarageType_Attchd', 'Exterior1st_VinylSd', 'BsmtFinSF1'
+        #                        'Exterior2nd_AsphShn'], inplace=True, errors='ignore')
         return self
-
-
 
 
     # викидання х-к не допомогло
     def drop_uninformed_features(self) -> 'HousePriceFeatureBuilder':
-        features = [
-    "OverallQual", "GrLivArea", "TotalBsmtSF", "ExterQual_encoded",
-    "GarageArea", "YearBuilt", "BsmtFinSF1", "LotArea",
-    "KitchenQual_encoded", "FullBath", "BsmtQual_encoded", "Fireplaces",
-    "YearRemodAdd", "BsmtFinType1_encoded", "OpenPorchSF", "OverallCond",
-    "GarageType_Attchd", "MasVnrArea", "HalfBath", "WoodDeckSF",
-   "MSZoning_RM", "BsmtExposure_encoded", "BsmtFullBath", "GarageType_Detchd",
-   "HouseStyle_2Story", "BedroomAbvGr", "BsmtUnfSF", "CentralAir_Y",
-   "HeatingQC_encoded", "GarageCond_encoded", "HouseStyle_1Story", "SaleType_WD",
-   "Exterior1st_HdBoard", "Neighborhood_NoRidge", "LotShape_IR1", "Exterior1st_MetalSd",
-   "PoolArea", "RoofStyle_Gable", "ScreenPorch", "Neighborhood_Crawfor",
-   "Neighborhood_StoneBr", "Neighborhood_Mitchel", "Neighborhood_NridgHt", "YrSold",
-   "Neighborhood_OldTown", "SaleCondition_Normal", "LandSlope_Mod", "EnclosedPorch",
-   "Exterior1st_VinylSd", "Fence_encoded", "Exterior1st_BrkFace", "Neighborhood_StoneBr",
-   "LandContour_HLS", "MasVnrType_Stone", "HouseStyle_1.5Fin", "BsmtFinSF2",
-]
-
+        #Для дерева
+        features = ['OverallQual', '1stFlrSF', 'ExterQual_positive', 'GarageArea',
+       'FullBath', 'LotArea', 'BsmtQual_positive', 'Fireplaces',
+       'KitchenQual_positive', 'BsmtFinSF1', 'TotRmsAbvGrd', 'YearRemodAdd',
+       'HalfBath', 'OpenPorchSF', 'GarageYrBlt', 'BedroomAbvGr', 'MasVnrArea',
+       'HouseStyle_2Story', 'GarageType_Attchd', 'OverallCond', 'CentralAir_Y',
+       'GarageType_Detchd', 'MSZoning_RL', 'HouseStyle_1Story', 'WoodDeckSF',
+       'BsmtFullBath', 'GarageFinish_negative', 'Foundation_PConc',
+       'FireplaceQu_positive', 'BsmtUnfSF', 'PavedDrive_Y',
+       'BsmtExposure_positive', 'HeatingQC_positive', 'SaleCondition_Normal',
+       'BsmtFinType1_positive', 'MoSold', 'GarageFinish_positive',
+       'BsmtFinType1_negative', 'Neighborhood_Crawfor',
+       'Neighborhood_Edwards']
+        
+        # для лін регрес
+        features = ['OverallQual', 'FullBath', 'GarageArea', 'TotRmsAbvGrd', '1stFlrSF',
+       'BsmtFinType1_positive', 'HalfBath', 'SaleType_WD', 'OverallCond',
+       'BsmtFullBath', 'Fireplaces', 'SaleCondition_Normal', 'YearRemodAdd',
+       'GarageType_Attchd', 'BsmtFinType1_neutral', 'MSZoning_RL',
+       'Condition1_Norm', 'GarageFinish_positive', 'BsmtExposure_positive',
+       'Foundation_PConc', 'WoodDeckSF', 'BsmtFinSF1', 'BsmtQual_positive',
+       'Neighborhood_NridgHt', 'GarageYrBlt', 'Neighborhood_NoRidge',
+       'HeatingQC_positive', 'BsmtUnfSF', 'Neighborhood_Edwards',
+       'BedroomAbvGr', 'BsmtFinType1_negative', 'Neighborhood_Somerst',
+       'RoofStyle_Gable', 'KitchenQual_positive', 'GarageFinish_neutral',
+       'CentralAir_Y', 'Exterior1st_VinylSd', 'LotConfig_Corner',
+       'Neighborhood_OldTown', 'ScreenPorch']
+        
         self.df = self.df[features]
+        return self
