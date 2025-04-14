@@ -1,44 +1,36 @@
-from sqlalchemy import create_engine, MetaData
-from sqlalchemy import Table, ForeignKey
-from sqlalchemy import Integer, String, BigInteger
-from sqlalchemy.orm import as_declarative, declared_attr
-from sqlalchemy.orm import mapped_column, Mapped, Session
+from sqlalchemy import create_engine
+from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import Mapped, mapped_column, as_declarative
+from sqlalchemy.orm import relationship
 
 
-engine = create_engine('sqlite+pysqlite:///:memory:', echo=True)
-
+engine = create_engine("sqlite:///test.db", echo=True)
 
 @as_declarative()
-class AbstractModel():
-    id: Mapped[int] = mapped_column(autoincrement=True, primary_key=True)
-    
-    @classmethod
-    @declared_attr
-    def __table_name__(cls) -> str:
-        return cls.__name__.lower()
+class Base(): pass
 
 
-class UserModel(AbstractModel):
+class User(Base):
     __tablename__ = 'users'
-    name: Mapped[str] = mapped_column(nullable=False)
-    fullname: Mapped[str] = mapped_column()
     
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(50), nullable=False)
+    age: Mapped[int] = mapped_column(nullable=False)
+    company_id: Mapped[int] = mapped_column(ForeignKey('companies.id'), nullable=True)
+    company = relationship("Company", back_populates="users")
     
-class AddressModel(AbstractModel):
-    __tablename__ = 'addresses'
-    email: Mapped[str] = mapped_column(nullable=False)
-    user_id: Mapped[int] = mapped_column(ForeignKey('{0}.id'.format(UserModel.__tablename__)))
+class Company(Base):
+    __tablename__ = 'companies'
+    
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(50), nullable=False)
+    users = relationship("User", back_populates="company")
+    
+Base.metadata.create_all(engine)
 
-    
+
 with Session(engine) as session:
-    with session.begin():
-        print('{0}.id'.format(UserModel.__tablename__))
-        AbstractModel.metadata.create_all(engine) 
-        user = UserModel(name='John', fullname='John Doe')
-        session.add(user)
-        user = UserModel(name='Johnfgfgfgffgfgfgff', fullname='John Doe')
-        session.add(user)
-        
-    with session.begin():
-        user = session.scalar(UserModel.__table__.select().where(UserModel.name == 'John'))
-        print('user:', user)
+    user = User(name="John Doe", age=30)
+    session.add(user)
+    session.commit()
