@@ -24,15 +24,15 @@ def train_step(model: nn.Module,
         X, y = X.to(device), y.to(device)
         y_pred = model(X)
         loss = loss_fn(y_pred, y)
-        loss_sum += loss
-        accuracy = accuracy_fn.to(device)(y, y_pred.argmax(dim=1))
-        accuracy_sum += accuracy
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+        loss_sum += loss.item()
+        accuracy_sum += accuracy_fn(y_pred.argmax(dim=1), y).item()
+        
     total_loss = loss_sum / len(dataloader)
     total_accuracy = accuracy_sum / len(dataloader)
-    return (model.__class__, total_loss.item(), total_accuracy.item())
+    return (model.__class__, total_loss, total_accuracy)
 
 def valid_step(model: nn.Module,
                dataloader: dataloader.DataLoader,
@@ -51,12 +51,11 @@ def valid_step(model: nn.Module,
             X, y = X.to(device), y.to(device)
             y_pred = model(X)
             loss = loss_fn(y_pred, y)
-            loss_sum += loss
-            accuracy = accuracy_fn.to(device)(y, y_pred.argmax(dim=1))
-            accuracy_sum += accuracy
+            loss_sum += loss.item()
+            accuracy_sum += accuracy_fn(y_pred.argmax(dim=1), y).item()
     total_loss = loss_sum / len(dataloader)
     total_accuracy = accuracy_sum / len(dataloader)
-    return (model.__class__, total_loss.item(), total_accuracy.item())
+    return (model.__class__, total_loss, total_accuracy)
 
 def show_results(train_accuracy: list,
                  train_loss: list,
@@ -88,6 +87,10 @@ def train(model: nn.Module,
     Returns:
         tuple[float, float, float, float]: (train_loss, train_accuracy, valid_loss, valid_accuracy)
     """
+    model.to(device)
+    loss_fn.to(device)
+    accuracy_fn.to(device)
+
     start_timer = timer()
     train_loss = []
     train_accuracy = []

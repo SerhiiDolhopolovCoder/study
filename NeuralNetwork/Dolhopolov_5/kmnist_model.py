@@ -46,7 +46,7 @@ class SimpleModel(nn.Module):
             self.classifier = nn.Linear(
                 in_features=x.shape[1],
                 out_features=self.output_shape
-            )
+            ).to(x.device)
         x = self.classifier(x)
         return x
     
@@ -107,7 +107,7 @@ class BatchModel(nn.Module):
             self.classifier = nn.Linear(
                 in_features=x.shape[1],
                 out_features=self.output_shape
-            )
+            ).to(x.device)
         x = self.classifier(x)
         return x
         
@@ -172,7 +172,7 @@ class DropoutModel(nn.Module):
             self.classifier = nn.Linear(
                 in_features=x.shape[1],
                 out_features=self.output_shape
-            )
+            ).to(x.device)
         x = self.classifier(x)
         return x
     
